@@ -1,0 +1,40 @@
+.college-details {
+    max-width: 800px;
+    margin: 30px auto;
+    padding: 25px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.college-details h1 {
+    margin: 25px 0 20px;
+    color: #243b64;
+}
+
+.college-details p {
+    margin: 14px 0;
+    line-height: 1.6;
+}
+
+.back-button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #243b64;
+    color: white;
+    cursor: pointer;
+}
+
+.back-button:hover {
+    background: #36558a;
+}
+
+.college-details a {
+    color: #1769aa;
+    text-decoration: none;
+}
+
+.college-details a:hover {
+    text-decoration: underline;
+}
