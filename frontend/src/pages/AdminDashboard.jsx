@@ -1,5 +1,12 @@
-
-function AdminDashboard({ admin, onLogout, onManageColleges }) {
+import "./AdminDashboard.css";
+function AdminDashboard({
+    admin,
+    onLogout,
+    onManageColleges,
+    onManageAreas,
+    onManageCourses,
+    onManageLocations
+}) {
     return (
         <div className="admin-dashboard">
             <h1>Admin Dashboard</h1>
@@ -24,15 +31,31 @@ function AdminDashboard({ admin, onLogout, onManageColleges }) {
                 <div className="dashboard-card">
                     <h3>Manage Courses</h3>
                     <p>Manage courses offered by colleges.</p>
-                    <button type="button">Manage Courses</button>
+                    <button
+                        type="button"
+                        onClick={onManageCourses}
+                    >
+                        Manage Courses
+                    </button>
                 </div>
 
                 <div className="dashboard-card">
                     <h3>Manage Locations</h3>
                     <p>Manage districts, cities, and areas.</p>
-                    <button type="button">Manage Locations</button>
+                    <button type="button" onClick={onManageLocations}>
+                        Manage Locations
+                    </button>
                 </div>
             </div>
+
+            <div className="dashboard-card">
+                <h3>Manage Areas</h3>
+                <p>View and manage areas for each city.</p>
+                <button type="button" onClick={onManageAreas}>
+                    Manage Areas
+                </button>
+            </div>
+
 
             <button type="button" onClick={onLogout}>
                 Logout

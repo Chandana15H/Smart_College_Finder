@@ -7,12 +7,140 @@ const pool = require('./config/db');
 
 const app = express();
 const adminRoutes = require("./routes/adminRoutes");
+const authMiddleware = require("./middleware/authMiddleware");
+const authRoutes = require("./routes/authRoutes");
+const savedCollegeRoutes = require("./routes/savedCollegeRoutes");
+
+const studentRoutes = require("./routes/studentRoutes");
+
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use("/api/admin", adminRoutes(pool));
+app.use("/api/auth", authRoutes);
+app.use("/api/saved-colleges", savedCollegeRoutes);
+
+app.use("/api/students", studentRoutes);
+
 // Get all states from MySQL
+
+/* Add a new college */
+app.post('/api/colleges', authMiddleware, async (req, res) => {
+    try {
+        const {
+            college_name,
+            area_id,
+            address,
+            phone,
+            website,
+            description,
+            image_url,
+            rating
+        } = req.body;
+
+        // Validate required fields
+
+        // Validate required college name
+        if (
+            typeof college_name !== "string" ||
+            !college_name.trim()
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "College name is required."
+            });
+        }
+
+        // Area is optional when the exact locality is unknown
+        let parsedAreaId = null;
+
+        if (area_id !== undefined && area_id !== null && area_id !== "") {
+            parsedAreaId = Number(area_id);
+
+            if (!Number.isInteger(parsedAreaId) || parsedAreaId <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Please select a valid area."
+                });
+            }
+
+            // Check whether the selected area exists
+            const [areas] = await pool.execute(
+                "SELECT area_id FROM areas WHERE area_id = ?",
+                [parsedAreaId]
+            );
+
+            if (areas.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "The selected area does not exist."
+                });
+            }
+        }
+
+
+        // Validate the optional rating
+        let parsedRating = null;
+
+        if (rating !== undefined && rating !== null && rating !== "") {
+            parsedRating = Number(rating);
+
+            if (
+                !Number.isFinite(parsedRating) ||
+                parsedRating < 0 ||
+                parsedRating > 5 ||
+                Math.round(parsedRating * 10) !== parsedRating * 10
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Rating must be between 0 and 5, with at most one decimal place."
+                });
+            }
+        }
+
+        const sql = `
+            INSERT INTO colleges
+            (
+                college_name,
+                area_id,
+                address,
+                phone,
+                website,
+                description,
+                image_url,
+                rating
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const [result] = await pool.execute(sql, [
+            college_name.trim(),
+            parsedAreaId,
+            address || null,
+            phone || null,
+            website || null,
+            description || null,
+            image_url || null,
+            parsedRating
+        ]);
+
+        res.status(201).json({
+            success: true,
+            message: "College added successfully.",
+            college_id: result.insertId
+        });
+
+    } catch (error) {
+        console.error("Add college error:", error.message);
+
+        res.status(500).json({
+            success: false,
+            message: "Unable to add college."
+        });
+    }
+});
+
 app.get('/api/states', async (req, res) => {
     try {
         const sql = `
@@ -73,6 +201,133 @@ app.get('/api/states', async (req, res) => {
 });
 
 
+/* Update an existing district */
+app.put("/api/districts/:id", authMiddleware, async (req, res) => {
+    try {
+        const districtId = Number(req.params.id);
+        const { district_name } = req.body;
+
+        const name =
+            typeof district_name === "string"
+                ? district_name.trim()
+                : "";
+
+        if (!Number.isInteger(districtId) || districtId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid district ID."
+            });
+        }
+
+        if (!name) {
+            return res.status(400).json({
+                success: false,
+                message: "District name is required."
+            });
+        }
+
+        const [existing] = await pool.query(
+            `SELECT district_id
+             FROM districts
+             WHERE LOWER(district_name) = LOWER(?)
+               AND district_id != ?`,
+            [name, districtId]
+        );
+
+        if (existing.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "This district name already exists."
+            });
+        }
+
+        const [result] = await pool.query(
+            `UPDATE districts
+             SET district_name = ?
+             WHERE district_id = ?`,
+            [name, districtId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "District not found."
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: "District updated successfully."
+        });
+
+    } catch (error) {
+        console.error("Error updating district:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update district."
+        });
+    }
+});
+
+
+/* Delete a district if no cities are linked to it */
+app.delete("/api/districts/:id", authMiddleware, async (req, res) => {
+    try {
+        const districtId = Number(req.params.id);
+
+        if (!Number.isInteger(districtId) || districtId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid district ID."
+            });
+        }
+
+        const [districts] = await pool.query(
+            "SELECT district_id FROM districts WHERE district_id = ?",
+            [districtId]
+        );
+
+        if (districts.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "District not found."
+            });
+        }
+
+        const [cities] = await pool.query(
+            "SELECT city_id FROM cities WHERE district_id = ? LIMIT 1",
+            [districtId]
+        );
+
+        if (cities.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "Cannot delete this district because cities are linked to it."
+            });
+        }
+
+        await pool.query(
+            "DELETE FROM districts WHERE district_id = ?",
+            [districtId]
+        );
+
+        return res.json({
+            success: true,
+            message: "District deleted successfully."
+        });
+
+    } catch (error) {
+        console.error("Error deleting district:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to delete district."
+        });
+    }
+});
+
+
 // Get all Karnataka districts
 app.get('/api/districts', async (req, res) => {
     try {
@@ -95,6 +350,60 @@ app.get('/api/districts', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Unable to retrieve districts.'
+        });
+    }
+});
+/* Add a new district */
+app.post("/api/districts", authMiddleware, async (req, res) => {
+    try {
+        const { district_name } = req.body;
+
+        const name =
+            typeof district_name === "string"
+                ? district_name.trim()
+                : "";
+
+        if (!name) {
+            return res.status(400).json({
+                success: false,
+                message: "District name is required."
+            });
+        }
+
+        const [existing] = await pool.query(
+            `SELECT district_id
+             FROM districts
+             WHERE LOWER(district_name) = LOWER(?)`,
+            [name]
+        );
+
+        if (existing.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "This district already exists."
+            });
+        }
+
+        const [result] = await pool.query(
+            "INSERT INTO districts (district_name) VALUES (?)",
+            [name]
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "District added successfully.",
+            district: {
+                district_id: result.insertId,
+                district_name: name
+            }
+        });
+
+    } catch (error) {
+        console.error("Error adding district:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to add district."
         });
     }
 });
@@ -128,6 +437,221 @@ app.get('/api/cities', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Unable to retrieve cities.'
+        });
+    }
+});
+
+
+/* Add a new city */
+app.post("/api/cities", authMiddleware, async (req, res) => {
+    try {
+        const { city_name, district_id } = req.body;
+
+        const name =
+            typeof city_name === "string" ? city_name.trim() : "";
+
+        const districtId = Number(district_id);
+
+        if (
+            !name ||
+            !Number.isInteger(districtId) ||
+            districtId <= 0
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid city name and district are required."
+            });
+        }
+
+        const [districts] = await pool.query(
+            "SELECT district_id FROM districts WHERE district_id = ?",
+            [districtId]
+        );
+
+        if (districts.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Selected district does not exist."
+            });
+        }
+
+        const [existing] = await pool.query(
+            `SELECT city_id FROM cities
+             WHERE LOWER(city_name) = LOWER(?)
+             AND district_id = ?`,
+            [name, districtId]
+        );
+
+        if (existing.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "This city already exists in the selected district."
+            });
+        }
+
+        const [result] = await pool.query(
+            "INSERT INTO cities (city_name, district_id) VALUES (?, ?)",
+            [name, districtId]
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "City added successfully.",
+            city: {
+                city_id: result.insertId,
+                city_name: name,
+                district_id: districtId
+            }
+        });
+    } catch (error) {
+        console.error("Error adding city:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to add city."
+        });
+    }
+});
+
+/* Edit an existing city */
+app.put("/api/cities/:id", authMiddleware, async (req, res) => {
+    try {
+        const cityId = Number(req.params.id);
+        const { city_name, district_id } = req.body;
+
+        const name =
+            typeof city_name === "string" ? city_name.trim() : "";
+
+        const districtId = Number(district_id);
+
+        if (
+            !Number.isInteger(cityId) ||
+            cityId <= 0 ||
+            !name ||
+            !Number.isInteger(districtId) ||
+            districtId <= 0
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid city ID, city name, and district are required."
+            });
+        }
+
+        const [cities] = await pool.query(
+            "SELECT city_id FROM cities WHERE city_id = ?",
+            [cityId]
+        );
+
+        if (cities.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "City not found."
+            });
+        }
+
+        const [districts] = await pool.query(
+            "SELECT district_id FROM districts WHERE district_id = ?",
+            [districtId]
+        );
+
+        if (districts.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Selected district does not exist."
+            });
+        }
+
+        const [existing] = await pool.query(
+            `SELECT city_id FROM cities
+             WHERE LOWER(city_name) = LOWER(?)
+             AND district_id = ?
+             AND city_id != ?`,
+            [name, districtId, cityId]
+        );
+
+        if (existing.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "This city already exists in the selected district."
+            });
+        }
+
+        await pool.query(
+            `UPDATE cities
+             SET city_name = ?, district_id = ?
+             WHERE city_id = ?`,
+            [name, districtId, cityId]
+        );
+
+        return res.json({
+            success: true,
+            message: "City updated successfully.",
+            city: {
+                city_id: cityId,
+                city_name: name,
+                district_id: districtId
+            }
+        });
+    } catch (error) {
+        console.error("Error updating city:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update city."
+        });
+    }
+});
+/* Delete a city */
+app.delete("/api/cities/:id", authMiddleware, async (req, res) => {
+    try {
+        const cityId = Number(req.params.id);
+
+        if (!Number.isInteger(cityId) || cityId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid city ID."
+            });
+        }
+
+        const [cities] = await pool.query(
+            "SELECT city_id FROM cities WHERE city_id = ?",
+            [cityId]
+        );
+
+        if (cities.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "City not found."
+            });
+        }
+
+        const [areas] = await pool.query(
+            "SELECT area_id FROM areas WHERE city_id = ? LIMIT 1",
+            [cityId]
+        );
+
+        if (areas.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "Cannot delete this city because it has linked areas. Remove or reassign those areas first."
+            });
+        }
+
+        await pool.query(
+            "DELETE FROM cities WHERE city_id = ?",
+            [cityId]
+        );
+
+        return res.json({
+            success: true,
+            message: "City deleted successfully."
+        });
+    } catch (error) {
+        console.error("Error deleting city:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to delete city."
         });
     }
 });
@@ -183,6 +707,393 @@ app.get('/api/areas', async (req, res) => {
     }
 });
 
+
+/* Add a new area */
+app.post("/api/areas", authMiddleware, async (req, res) => {
+    try {
+        const { area_name, city_id } = req.body;
+        const name = typeof area_name === "string" ? area_name.trim() : "";
+        const cityId = Number(city_id);
+
+        if (!name || !Number.isInteger(cityId) || cityId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid area name and city are required."
+            });
+        }
+
+        const [cities] = await pool.query(
+            "SELECT city_id FROM cities WHERE city_id = ?",
+            [cityId]
+        );
+
+        if (cities.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Selected city does not exist."
+            });
+        }
+
+        const [existing] = await pool.query(
+            "SELECT area_id FROM areas WHERE LOWER(area_name) = LOWER(?) AND city_id = ?",
+            [name, cityId]
+        );
+
+        if (existing.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "This area already exists in the selected city."
+            });
+        }
+
+        const [result] = await pool.query(
+            "INSERT INTO areas (area_name, city_id) VALUES (?, ?)",
+            [name, cityId]
+        );
+
+        res.status(201).json({
+            success: true,
+            message: "Area added successfully.",
+            area: {
+                area_id: result.insertId,
+                area_name: name,
+                city_id: cityId
+            }
+        });
+    } catch (error) {
+        console.error("Error adding area:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to add area."
+        });
+    }
+});
+
+
+/* Update an existing area */
+app.put("/api/areas/:id", authMiddleware, async (req, res) => {
+    try {
+        const areaId = Number(req.params.id);
+        const { area_name, city_id } = req.body;
+        const name = typeof area_name === "string" ? area_name.trim() : "";
+        const cityId = Number(city_id);
+
+        if (
+            !Number.isInteger(areaId) || areaId <= 0 ||
+            !name ||
+            !Number.isInteger(cityId) || cityId <= 0
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid area ID, name, and city are required."
+            });
+        }
+
+        const [cities] = await pool.query(
+            "SELECT city_id FROM cities WHERE city_id = ?",
+            [cityId]
+        );
+
+        if (cities.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Selected city does not exist."
+            });
+        }
+
+        const [duplicates] = await pool.query(
+            `SELECT area_id FROM areas
+             WHERE LOWER(area_name) = LOWER(?)
+             AND city_id = ? AND area_id <> ?`,
+            [name, cityId, areaId]
+        );
+
+        if (duplicates.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "This area already exists in the selected city."
+            });
+        }
+
+        const [result] = await pool.query(
+            "UPDATE areas SET area_name = ?, city_id = ? WHERE area_id = ?",
+            [name, cityId, areaId]
+        );
+
+        if (result.affectedRows === 0) {
+            const [existingArea] = await pool.query(
+                "SELECT area_id FROM areas WHERE area_id = ?",
+                [areaId]
+            );
+
+            if (existingArea.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Area not found."
+                });
+            }
+        }
+
+        res.json({
+            success: true,
+            message: "Area updated successfully."
+        });
+    } catch (error) {
+        console.error("Error updating area:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update area."
+        });
+    }
+});
+
+
+/* Delete an area */
+app.delete("/api/areas/:id", authMiddleware, async (req, res) => {
+    try {
+        const areaId = Number(req.params.id);
+
+        if (!Number.isInteger(areaId) || areaId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid area ID."
+            });
+        }
+
+        // Prevent deletion if colleges still use this area
+        const [colleges] = await pool.query(
+            "SELECT college_id FROM colleges WHERE area_id = ? LIMIT 1",
+            [areaId]
+        );
+
+        if (colleges.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "This area is assigned to a college. Move the college to another area before deleting it."
+            });
+        }
+
+        const [result] = await pool.query(
+            "DELETE FROM areas WHERE area_id = ?",
+            [areaId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Area not found."
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "Area deleted successfully."
+        });
+    } catch (error) {
+        console.error("Error deleting area:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to delete area."
+        });
+    }
+});
+
+
+
+app.put('/api/colleges/:id', authMiddleware, async (req, res) => {
+    const collegeId = Number(req.params.id);
+
+    const {
+        college_name,
+        area_id,
+        address,
+        phone,
+        website,
+        description,
+        image_url,
+        rating
+    } = req.body;
+
+    if (!Number.isInteger(collegeId) || collegeId <= 0) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid college ID."
+        });
+    }
+
+    if (
+        typeof college_name !== "string" ||
+        !college_name.trim()
+    ) {
+        return res.status(400).json({
+            success: false,
+            message: "College name is required."
+        });
+    }
+
+    const parsedAreaId = Number(area_id);
+
+    if (!Number.isInteger(parsedAreaId) || parsedAreaId <= 0) {
+        return res.status(400).json({
+            success: false,
+            message: "Please select a valid area."
+        });
+    }
+
+    let parsedRating = null;
+
+    if (rating !== "" && rating !== null && rating !== undefined) {
+        parsedRating = Number(rating);
+
+        if (
+            !Number.isFinite(parsedRating) ||
+            parsedRating < 0 ||
+            parsedRating > 5 ||
+            !Number.isInteger(parsedRating * 10)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Rating must be between 0 and 5, with at most one decimal place."
+            });
+        }
+    }
+
+    try {
+        const [areas] = await pool.execute(
+            "SELECT area_id FROM areas WHERE area_id = ?",
+            [parsedAreaId]
+        );
+
+        if (areas.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Selected area does not exist."
+            });
+        }
+
+        const [result] = await pool.execute(
+            `UPDATE colleges
+             SET college_name = ?,
+                 area_id = ?,
+                 address = ?,
+                 phone = ?,
+                 website = ?,
+                 description = ?,
+                 image_url = ?,
+                 rating = ?
+             WHERE college_id = ?`,
+            [
+                college_name.trim(),
+                parsedAreaId,
+                address || null,
+                phone || null,
+                website || null,
+                description || null,
+                image_url || null,
+                parsedRating,
+                collegeId
+            ]
+        );
+
+        if (result.affectedRows === 0) {
+            const [existing] = await pool.execute(
+                "SELECT college_id FROM colleges WHERE college_id = ?",
+                [collegeId]
+            );
+
+            if (existing.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "College not found."
+                });
+            }
+        }
+
+        return res.json({
+            success: true,
+            message: "College updated successfully."
+        });
+    } catch (error) {
+        console.error("Update college error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update college."
+        });
+    }
+});
+
+/* Delete a college */
+app.delete('/api/colleges/:id', authMiddleware, async (req, res) => {
+    const collegeId = Number(req.params.id);
+
+    if (!Number.isInteger(collegeId) || collegeId <= 0) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid college ID."
+        });
+    }
+
+    let connection;
+
+    try {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // Check whether the college exists
+        const [colleges] = await connection.execute(
+            "SELECT college_id FROM colleges WHERE college_id = ?",
+            [collegeId]
+        );
+
+        if (colleges.length === 0) {
+            await connection.rollback();
+
+            return res.status(404).json({
+                success: false,
+                message: "College not found."
+            });
+        }
+
+        // Delete related course links first
+        await connection.execute(
+            "DELETE FROM college_courses WHERE college_id = ?",
+            [collegeId]
+        );
+
+        // Delete the college
+        await connection.execute(
+            "DELETE FROM colleges WHERE college_id = ?",
+            [collegeId]
+        );
+
+        await connection.commit();
+
+        res.json({
+            success: true,
+            message: "College deleted successfully."
+        });
+
+    } catch (error) {
+        if (connection) {
+            await connection.rollback();
+        }
+
+        console.error("Delete college error:", error.message);
+
+        res.status(500).json({
+            success: false,
+            message: "Unable to delete college."
+        });
+
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+});
+
+
 // 5. Search colleges by city, area, and course
 app.get('/api/colleges', async (req, res) => {
     try {
@@ -208,11 +1119,11 @@ app.get('/api/colleges', async (req, res) => {
                     ORDER BY co.course_name
                     SEPARATOR ', '
                 ) AS courses
-            FROM colleges cl
-            JOIN areas a
-                ON cl.area_id = a.area_id
-            JOIN cities ci
-                ON a.city_id = ci.city_id
+                   FROM colleges cl
+LEFT JOIN areas a
+    ON cl.area_id = a.area_id
+LEFT JOIN cities ci
+    ON ci.city_id = COALESCE(a.city_id, cl.city_id)
             LEFT JOIN college_courses cc
                 ON cl.college_id = cc.college_id
             LEFT JOIN courses co
@@ -299,10 +1210,186 @@ app.get('/api/colleges', async (req, res) => {
     }
 });
 
+app.get("/api/courses", async (req, res) => {
+    try {
+        const [courses] = await pool.query(
+            "SELECT course_id, course_name FROM courses ORDER BY course_name ASC"
+        );
+
+        res.json({
+            success: true,
+            courses: courses
+        });
+    } catch (error) {
+        console.error("Error fetching courses:", error);
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch courses."
+        });
+    }
+});
+
+/* Add a new course */
+app.post("/api/courses", authMiddleware, async (req, res) => {
+    try {
+        const { course_name } = req.body;
+
+        if (!course_name || !course_name.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Course name is required."
+            });
+        }
+
+        const [result] = await pool.query(
+            "INSERT INTO courses (course_name) VALUES (?)",
+            [course_name.trim()]
+        );
+
+        res.status(201).json({
+            success: true,
+            message: "Course added successfully.",
+            course: {
+                course_id: result.insertId,
+                course_name: course_name.trim()
+            }
+        });
+    } catch (error) {
+        console.error("Error adding course:", error);
+
+        if (error.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({
+                success: false,
+                message: "This course already exists."
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to add course."
+        });
+    }
+});
+
+/* Update an existing course */
+app.put("/api/courses/:id", authMiddleware, async (req, res) => {
+    try {
+        const courseId = Number(req.params.id);
+        const { course_name } = req.body;
+
+        if (!Number.isInteger(courseId) || courseId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid course ID."
+            });
+        }
+
+        if (!course_name || !course_name.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Course name is required."
+            });
+        }
+
+        const [result] = await pool.query(
+            "UPDATE courses SET course_name = ? WHERE course_id = ?",
+            [course_name.trim(), courseId]
+        );
+        console.log("Course ID received:", courseId);
+        console.log("Update result:", result);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Course not found."
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "Course updated successfully."
+        });
+    } catch (error) {
+        console.error("Error updating course:", error);
+
+        if (error.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({
+                success: false,
+                message: "This course name already exists."
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to update course."
+        });
+    }
+});
+
+
+/* Delete a course */
+app.delete("/api/courses/:id", authMiddleware, async (req, res) => {
+    try {
+        const courseId = Number(req.params.id);
+
+        if (!Number.isInteger(courseId) || courseId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid course ID."
+            });
+        }
+
+        // Check whether this course is used by any college
+        const [linkedCourses] = await pool.query(
+            "SELECT college_id FROM college_courses WHERE course_id = ? LIMIT 1",
+            [courseId]
+        );
+
+        if (linkedCourses.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "This course is assigned to a college and cannot be deleted yet."
+            });
+        }
+
+        // Delete the course
+        const [result] = await pool.query(
+            "DELETE FROM courses WHERE course_id = ?",
+            [courseId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Course not found."
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "Course deleted successfully."
+        });
+
+    } catch (error) {
+        console.error("Error deleting course:", error);
+
+        res.status(500).json({
+            success: false,
+            message: "Failed to delete course."
+        });
+    }
+});
+
+
+/* Update an existing course */
+
 // 6. Start the server
 const PORT = process.env.PORT || 5000;
 
 console.log("About to start Express server...");
+
+
 app.listen(PORT, () => {
     console.log(`College-Finder backend running on port ${PORT}`);
 });

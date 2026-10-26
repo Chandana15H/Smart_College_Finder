@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import "./AdminLogin.css";
 
 const API_URL = "http://localhost:5000/api";
 
@@ -74,7 +75,7 @@ function AdminLogin({ onLogin }) {
 
             <button
                 type="button"
-                onClick={() => window.location.reload()}
+                onClick={() => window.location.href = "/"}
             >
                 Back to Home
             </button>

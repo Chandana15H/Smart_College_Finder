@@ -1,0 +1,167 @@
+.manage-colleges {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px;
+    color: #1e293b;
+    box-sizing: border-box;
+}
+
+.manage-colleges h1 {
+    margin: 0 0 8px;
+    color: #1d4ed8;
+    font-size: 30px;
+}
+
+.manage-colleges>p {
+    margin: 0 0 22px;
+    color: #64748b;
+}
+
+.manage-colleges h2 {
+    margin: 0 0 20px;
+    font-size: 21px;
+    color: #1e3a8a;
+}
+
+.manage-colleges form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 18px;
+    padding: 24px;
+    margin: 24px 0;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.manage-colleges form h2,
+.manage-colleges form h3,
+.manage-colleges form label,
+.manage-colleges form textarea,
+.manage-colleges form button,
+.manage-colleges form [role="alert"],
+.manage-colleges form [role="status"] {
+    grid-column: 1 / -1;
+}
+
+.manage-colleges label {
+    display: block;
+    margin-top: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.manage-colleges input,
+.manage-colleges select,
+.manage-colleges textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 11px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    color: #1e293b;
+    font: inherit;
+}
+
+.manage-colleges textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+
+.manage-colleges input:focus,
+.manage-colleges select:focus,
+.manage-colleges textarea:focus {
+    outline: 2px solid #bfdbfe;
+    border-color: #3b82f6;
+}
+
+.manage-colleges button {
+    width: fit-content;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    background: #2563eb;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.manage-colleges button:hover {
+    background: #1d4ed8;
+}
+
+.manage-colleges button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.manage-colleges>button {
+    margin-top: 8px;
+}
+
+.manage-colleges .college-admin-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 20px;
+}
+
+.manage-colleges .college-admin-card {
+    min-width: 0;
+    padding: 22px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+.manage-colleges .college-admin-card h3 {
+    margin: 0 0 12px;
+    color: #1e40af;
+    overflow-wrap: anywhere;
+}
+
+.manage-colleges .college-admin-card p {
+    color: #475569;
+    overflow-wrap: anywhere;
+}
+
+.manage-colleges .college-admin-card>button {
+    margin: 8px 8px 0 0;
+}
+
+.manage-colleges .edit-college-form {
+    margin-top: 20px;
+    padding: 18px;
+    background: #f8fafc;
+    box-shadow: none;
+}
+
+.manage-colleges [role="alert"] {
+    color: #b91c1c;
+}
+
+.manage-colleges [role="status"] {
+    color: #15803d;
+}
+
+@media (max-width: 700px) {
+    .manage-colleges {
+        padding: 16px;
+    }
+
+    .manage-colleges form,
+    .manage-colleges .college-admin-list {
+        grid-template-columns: 1fr;
+    }
+
+    .manage-colleges form {
+        padding: 18px;
+    }
+}

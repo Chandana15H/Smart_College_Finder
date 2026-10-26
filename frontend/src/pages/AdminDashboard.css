@@ -1,0 +1,212 @@
+/* =========================
+   ADMIN DASHBOARD
+========================= */
+
+.admin-dashboard {
+    width: calc(100% - 40px);
+    max-width: 1100px;
+    margin: 36px auto;
+    padding: 32px;
+    color: #1e293b;
+    background: #ffffff;
+    border: 1px solid #e1e8f3;
+    border-radius: 20px;
+    box-shadow: 0 8px 28px rgba(31, 56, 105, 0.07);
+}
+
+/* Dashboard heading */
+
+.admin-dashboard>h1 {
+    margin: 0 0 12px;
+    color: #244bb3;
+    font-size: clamp(2rem, 4vw, 2.7rem);
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.7px;
+}
+
+.admin-dashboard>p {
+    margin: 8px 0;
+    color: #64748b;
+    font-size: 1rem;
+    line-height: 1.7;
+}
+
+.admin-dashboard>p:first-of-type {
+    color: #334155;
+    font-size: 1.1rem;
+    font-weight: 650;
+}
+
+/* Management cards grid */
+
+.admin-dashboard>.dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+    width: 100%;
+    margin: 30px 0 22px;
+}
+
+/* Individual management cards */
+
+.admin-dashboard .dashboard-card {
+    min-width: 0;
+    padding: 26px;
+    overflow-wrap: anywhere;
+    background: #fdfefe;
+    border: 1px solid #e1e8f3;
+    border-radius: 16px;
+    box-shadow: 0 5px 18px rgba(31, 56, 105, 0.05);
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
+}
+
+.admin-dashboard .dashboard-card:hover {
+    border-color: #c8d7f5;
+    box-shadow: 0 10px 26px rgba(31, 56, 105, 0.09);
+    transform: translateY(-3px);
+}
+
+.admin-dashboard .dashboard-card h3 {
+    margin: 0 0 12px;
+    color: #244bb3;
+    font-size: 1.25rem;
+    font-weight: 750;
+    line-height: 1.4;
+}
+
+.admin-dashboard .dashboard-card p {
+    margin: 0 0 20px;
+    color: #64748b;
+    font-size: 0.95rem;
+    line-height: 1.7;
+}
+
+/* Management buttons */
+
+.admin-dashboard .dashboard-card button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    min-height: 44px;
+    padding: 11px 18px;
+    color: #ffffff;
+    background: #244bb3;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.admin-dashboard .dashboard-card button:hover {
+    background: #19398e;
+    transform: translateY(-1px);
+}
+
+/* Areas card outside the grid */
+
+.admin-dashboard>.dashboard-card {
+    margin-bottom: 24px;
+}
+
+/* Logout button */
+
+.admin-dashboard>button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 11px 22px;
+    color: #b42318;
+    background: #fff1f0;
+    border: 1px solid #fecdca;
+    border-radius: 9px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        color 0.2s ease,
+        background 0.2s ease;
+}
+
+.admin-dashboard>button:hover {
+    color: #ffffff;
+    background: #b42318;
+}
+
+/* Keyboard accessibility */
+
+.admin-dashboard button:focus-visible {
+    outline: 3px solid rgba(36, 75, 179, 0.3);
+    outline-offset: 3px;
+}
+
+/* =========================
+   TABLET
+========================= */
+
+@media (max-width: 768px) {
+    .admin-dashboard {
+        width: calc(100% - 32px);
+        margin: 28px auto;
+        padding: 26px;
+    }
+
+    .admin-dashboard>.dashboard-cards {
+        gap: 16px;
+    }
+
+    .admin-dashboard .dashboard-card {
+        padding: 22px;
+    }
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 560px) {
+    .admin-dashboard {
+        width: calc(100% - 24px);
+        margin: 20px auto;
+        padding: 20px 16px;
+        border-radius: 15px;
+    }
+
+    .admin-dashboard>.dashboard-cards {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        margin-top: 24px;
+    }
+
+    .admin-dashboard .dashboard-card {
+        padding: 21px;
+    }
+
+    .admin-dashboard .dashboard-card button {
+        width: 100%;
+    }
+
+    .admin-dashboard>button {
+        width: 100%;
+    }
+}
+
+/* Reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .admin-dashboard *,
+    .admin-dashboard *::before,
+    .admin-dashboard *::after {
+        transition: none !important;
+    }
+}

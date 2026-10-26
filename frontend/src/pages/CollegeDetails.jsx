@@ -66,11 +66,17 @@ function CollegeDetails({ college, onBack }) {
                 </p>
             )}
 
+
             {college.website && (
                 <p>
                     <strong>Official Website:</strong>{" "}
                     <a
-                        href={college.website}
+                        href={
+                            college.website.startsWith("http://") ||
+                                college.website.startsWith("https://")
+                                ? college.website
+                                : `https://${college.website}`
+                        }
                         target="_blank"
                         rel="noopener noreferrer"
                     >
@@ -78,6 +84,7 @@ function CollegeDetails({ college, onBack }) {
                     </a>
                 </p>
             )}
+
         </main>
     );
 }

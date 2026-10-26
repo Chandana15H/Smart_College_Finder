@@ -1,0 +1,135 @@
+.user-register-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 16px;
+    background: linear-gradient(135deg, #eaf2ff, #f5f0ff);
+    box-sizing: border-box;
+}
+
+.user-register-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 32px;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 12px 35px rgba(30, 50, 90, 0.12);
+    box-sizing: border-box;
+}
+
+.user-register-icon {
+    font-size: 42px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.user-register-card h1 {
+    margin: 0 0 8px;
+    color: #172554;
+    text-align: center;
+    font-size: 27px;
+}
+
+.user-register-card>p {
+    color: #64748b;
+    text-align: center;
+    margin: 0 0 24px;
+}
+
+.user-register-card form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.user-register-card label {
+    color: #334155;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+.user-register-card input {
+    width: 100%;
+    padding: 12px 13px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 14px;
+    box-sizing: border-box;
+    outline: none;
+}
+
+.user-register-card input:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.user-register-card form>button {
+    margin-top: 12px;
+    padding: 13px;
+    border: none;
+    border-radius: 8px;
+    background: #4338ca;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.user-register-card form>button:hover {
+    background: #3730a3;
+}
+
+.user-register-card button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.user-register-error,
+.user-register-success {
+    font-size: 13px;
+    margin: 5px 0;
+    overflow-wrap: anywhere;
+}
+
+.user-register-card .user-register-error {
+    color: #b91c1c;
+}
+
+.user-register-card .user-register-success {
+    color: #15803d;
+}
+
+.user-register-card .user-register-login {
+    margin: 20px 0 12px;
+    font-size: 14px;
+}
+
+.user-register-login button {
+    border: none;
+    background: none;
+    color: #4338ca;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.user-register-card .user-register-back {
+    display: block;
+    margin: 10px auto 0;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    color: #475569;
+    cursor: pointer;
+}
+
+@media (max-width: 480px) {
+    .user-register-card {
+        padding: 24px 20px;
+    }
+
+    .user-register-card h1 {
+        font-size: 23px;
+    }
+}
