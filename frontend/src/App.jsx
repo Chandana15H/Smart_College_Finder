@@ -4,7 +4,7 @@ import "./App.css";
 import CollegeDetails from "./pages/CollegeDetails";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
-import ManageColleges from "./pages/ManageCollege";
+import ManageColleges from "./pages/ManageColleges";
 import ManageAreas from "./pages/ManageAreas";
 import ManageCourses from "./pages/ManageCourses";
 import Home from "./pages/Home";
@@ -165,7 +165,17 @@ function App() {
   );
 
   // 2. Fetch areas when the selected city changes
+
   useEffect(() => {
+    // Do not show areas until a city is selected.
+    if (!selectedCity) {
+      setAreas([]);
+      setArea("");
+      setAreasError("");
+      setAreasLoading(false);
+      return;
+    }
+
     const fetchAreas = async () => {
       setAreas([]);
       setArea("");
@@ -173,11 +183,9 @@ function App() {
       setAreasLoading(true);
 
       try {
-        const url = selectedCity
-          ? `${API_URL}/areas?cityId=${selectedCity.city_id}`
-          : `${API_URL}/areas`;
-
-        const response = await fetch(url);
+        const response = await fetch(
+          `${API_URL}/areas?cityId=${selectedCity.city_id}`
+        );
 
         if (!response.ok) {
           throw new Error("Unable to load areas.");
@@ -200,6 +208,7 @@ function App() {
 
     fetchAreas();
   }, [selectedCity?.city_id]);
+
 
   // Fetch colleges for the College dropdown
   useEffect(() => {
@@ -944,6 +953,7 @@ function App() {
       </main>
 
 
+
       <footer className="app-footer">
         <p>Smart College Finder</p>
         <p>Find the right college for your future.</p>
@@ -953,9 +963,10 @@ function App() {
           className="logout-button"
           onClick={() => setCurrentPage("home")}
         >
-          Logout
+          Back to Home
         </button>
       </footer>
+
 
     </div>
   );

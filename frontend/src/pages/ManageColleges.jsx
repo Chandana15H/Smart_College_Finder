@@ -17,8 +17,12 @@ const emptyForm = {
 
 function ManageColleges({ token, onBack }) {
     const [colleges, setColleges] = useState([]);
+    const [districts, setDistricts] = useState([]);
+    const [cities, setCities] = useState([]);
     const [areas, setAreas] = useState([]);
 
+    const [selectedDistrict, setSelectedDistrict] = useState("");
+    const [selectedCity, setSelectedCity] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [editingCollegeId, setEditingCollegeId] = useState(null);
@@ -60,27 +64,78 @@ function ManageColleges({ token, onBack }) {
         loadColleges();
     }, []);
 
-    // Load areas for the Add College and Edit College forms
+    // Load districts
     useEffect(() => {
-        const fetchAreas = async () => {
+        const fetchDistricts = async () => {
             try {
-                const response = await fetch(`${API_URL}/areas`);
+                const response = await fetch(`${API_URL}/districts`);
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.message || "Unable to load areas.");
+                    throw new Error(data.message || "Unable to load districts.");
                 }
 
-                setAreas(
-                    Array.isArray(data) ? data : data.areas || []
+                setDistricts(
+                    Array.isArray(data) ? data : data.districts || []
                 );
             } catch (err) {
-                setFormError(err.message || "Unable to load areas.");
+                setFormError(err.message);
+            }
+        };
+
+        fetchDistricts();
+    }, []);
+
+    // Load cities
+    useEffect(() => {
+        const fetchCities = async () => {
+            try {
+                const response = await fetch(`${API_URL}/cities`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || "Unable to load cities.");
+                }
+
+                setCities(
+                    Array.isArray(data) ? data : data.cities || []
+                );
+            } catch (err) {
+                setFormError(err.message);
+            }
+        };
+
+        fetchCities();
+    }, []);
+
+    // Load areas for the Add College and Edit College forms
+    useEffect(() => {
+        const fetchAreas = async () => {
+            if (!selectedCity) {
+                setAreas([]);
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `${API_URL}/areas?cityId=${selectedCity}`
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || "Failed to fetch areas");
+                }
+
+                setAreas(Array.isArray(data) ? data : data.areas || []);
+            } catch (error) {
+                console.error("Error fetching areas:", error);
+                setAreas([]);
             }
         };
 
         fetchAreas();
-    }, []);
+    }, [selectedCity]);
 
     // Handle Add College form changes
     const handleFormChange = (e) => {
@@ -275,6 +330,49 @@ function ManageColleges({ token, onBack }) {
                     placeholder="Enter college name"
                     required
                 />
+                <label>District *</label>
+                <select
+                    value={selectedDistrict}
+                    onChange={(e) => {
+                        setSelectedDistrict(e.target.value);
+                        setSelectedCity("");
+                        setForm((prev) => ({ ...prev, area_id: "" }));
+                    }}
+                    required
+                >
+                    <option value="">Select District</option>
+                    {districts.map((district) => (
+                        <option
+                            key={district.district_id}
+                            value={district.district_id}
+                        >
+                            {district.district_name}
+                        </option>
+                    ))}
+                </select>
+
+                <label>City *</label>
+                <select
+                    value={selectedCity}
+                    onChange={(e) => {
+                        setSelectedCity(e.target.value);
+                        setForm((prev) => ({ ...prev, area_id: "" }));
+                    }}
+                    required
+                    disabled={!selectedDistrict}
+                >
+                    <option value="">Select City</option>
+                    {cities
+                        .filter(
+                            (city) =>
+                                String(city.district_id) === String(selectedDistrict)
+                        )
+                        .map((city) => (
+                            <option key={city.city_id} value={city.city_id}>
+                                {city.city_name}
+                            </option>
+                        ))}
+                </select>
 
                 <label htmlFor="add_area_id">Area *</label>
                 <select

@@ -769,6 +769,231 @@ app.post("/api/areas", authMiddleware, async (req, res) => {
     }
 });
 
+// POST /api/areas/bulk
+// Create multiple areas while skipping existing duplicates
+app.post("/api/areas/bulk", authMiddleware, async (req, res) => {
+    const { areas } = req.body;
+
+    if (!Array.isArray(areas) || areas.length === 0) {
+        return res.status(400).json({
+            message: "Please provide a non-empty areas array."
+        });
+    }
+
+    if (areas.length > 200) {
+        return res.status(400).json({
+            message: "Maximum 200 areas per request."
+        });
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        const created = [];
+        const skipped = [];
+
+        for (const item of areas) {
+            const areaName = String(item.area_name || "").trim();
+            const cityId = Number(item.city_id);
+
+            if (
+                !areaName ||
+                areaName.length > 100 ||
+                !Number.isInteger(cityId) ||
+                cityId <= 0
+            ) {
+                throw new Error(
+                    "Each area needs a valid area_name and city_id."
+                );
+            }
+
+            // Confirm the city exists
+            const [cities] = await connection.execute(
+                "SELECT city_id FROM cities WHERE city_id = ?",
+                [cityId]
+            );
+
+            if (cities.length === 0) {
+                throw new Error(`City ID ${cityId} does not exist.`);
+            }
+
+            // Skip duplicate area names within the same city
+            const [existing] = await connection.execute(
+                `SELECT area_id
+                 FROM areas
+                 WHERE city_id = ?
+                   AND LOWER(area_name) = LOWER(?)
+                 LIMIT 1`,
+                [cityId, areaName]
+            );
+
+            if (existing.length > 0) {
+                skipped.push({
+                    area_name: areaName,
+                    city_id: cityId,
+                    reason: "Area already exists"
+                });
+                continue;
+            }
+
+            const [result] = await connection.execute(
+                `INSERT INTO areas (area_name, city_id)
+                 VALUES (?, ?)`,
+                [areaName, cityId]
+            );
+
+            created.push({
+                area_id: result.insertId,
+                area_name: areaName,
+                city_id: cityId
+            });
+        }
+
+        await connection.commit();
+
+        return res.status(201).json({
+            message: "Bulk area operation completed.",
+            created_count: created.length,
+            skipped_count: skipped.length,
+            created,
+            skipped
+        });
+    } catch (error) {
+        await connection.rollback();
+
+        return res.status(400).json({
+            message: error.message || "Failed to create areas."
+        });
+    } finally {
+        connection.release();
+    }
+});
+
+// PUT /api/colleges/bulk-assign-area
+// Assign existing areas to multiple colleges
+app.put(
+    "/api/colleges/bulk-assign-area",
+    authMiddleware,
+    async (req, res) => {
+        const { assignments } = req.body;
+
+        if (
+            !Array.isArray(assignments) ||
+            assignments.length === 0
+        ) {
+            return res.status(400).json({
+                message: "Please provide a non-empty assignments array."
+            });
+        }
+
+        if (assignments.length > 200) {
+            return res.status(400).json({
+                message: "Maximum 200 assignments per request."
+            });
+        }
+
+        const connection = await pool.getConnection();
+
+        try {
+            await connection.beginTransaction();
+
+            const updated = [];
+            const seenCollegeIds = new Set();
+
+            for (const item of assignments) {
+                const collegeId = Number(item.college_id);
+                const areaId = Number(item.area_id);
+
+                if (
+                    !Number.isInteger(collegeId) ||
+                    collegeId <= 0 ||
+                    !Number.isInteger(areaId) ||
+                    areaId <= 0
+                ) {
+                    throw new Error(
+                        "Each assignment needs valid college_id and area_id values."
+                    );
+                }
+
+                if (seenCollegeIds.has(collegeId)) {
+                    throw new Error(
+                        `College ID ${collegeId} appears more than once.`
+                    );
+                }
+
+                seenCollegeIds.add(collegeId);
+
+                // Confirm the college and area exist in the same city
+                const [matches] = await connection.execute(
+                    `SELECT
+                        c.college_id,
+                        c.college_name,
+                        c.city_id AS college_city_id,
+                        a.area_id,
+                        a.area_name,
+                        a.city_id AS area_city_id
+                     FROM colleges c
+                     JOIN areas a ON a.area_id = ?
+                     WHERE c.college_id = ?
+                     FOR UPDATE`,
+                    [areaId, collegeId]
+                );
+
+                if (matches.length === 0) {
+                    throw new Error(
+                        `College ID ${collegeId} or area ID ${areaId} does not exist.`
+                    );
+                }
+
+                const match = matches[0];
+
+                if (
+                    match.college_city_id == null ||
+                    Number(match.college_city_id) !==
+                    Number(match.area_city_id)
+                ) {
+                    throw new Error(
+                        `Area "${match.area_name}" does not belong to the city of college "${match.college_name}".`
+                    );
+                }
+
+                await connection.execute(
+                    `UPDATE colleges
+                     SET area_id = ?
+                     WHERE college_id = ?`,
+                    [areaId, collegeId]
+                );
+
+                updated.push({
+                    college_id: collegeId,
+                    college_name: match.college_name,
+                    area_id: areaId,
+                    area_name: match.area_name
+                });
+            }
+
+            await connection.commit();
+
+            return res.json({
+                message: "College areas assigned successfully.",
+                updated_count: updated.length,
+                updated
+            });
+        } catch (error) {
+            await connection.rollback();
+
+            return res.status(400).json({
+                message:
+                    error.message ||
+                    "Failed to assign areas to colleges."
+            });
+        } finally {
+            connection.release();
+        }
+    }
+);
 
 /* Update an existing area */
 app.put("/api/areas/:id", authMiddleware, async (req, res) => {
